@@ -1,16 +1,19 @@
-// 任务路由：定义 /api/tasks 相关的五个 CRUD 接口，数据来源改为 PostgreSQL（Prisma）
+// 任务路由：定义 /api/tasks 相关的五个 CRUD 接口，所有接口均需认证
 
 import { Router, Request, Response } from 'express';
 import { prisma } from '../db/prisma';
+import { requireAuth } from '../middleware/auth';
 import { CreateTaskBody, UpdateTaskBody, TaskStatus } from '../types/task';
 
 const router = Router();
-
 const VALID_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'done'];
+
+// 所有任务接口都需要登录
+router.use(requireAuth);
 
 /**
  * GET /api/tasks
- * 返回所有任务列表，支持 ?status=todo|in-progress|done 筛选
+ * 返回当前用户的任务列表，支持 ?status=todo|in-progress|done 筛选
  */
 router.get('/', async (req: Request, res: Response) => {
   const { status } = req.query;
@@ -21,7 +24,10 @@ router.get('/', async (req: Request, res: Response) => {
   }
 
   const tasks = await prisma.task.findMany({
-    where: status ? { status: status as string } : undefined,
+    where: {
+      userId: req.user!.id,
+      ...(status ? { status: status as string } : {}),
+    },
     orderBy: { createdAt: 'desc' },
   });
   res.json(tasks);
@@ -29,10 +35,12 @@ router.get('/', async (req: Request, res: Response) => {
 
 /**
  * GET /api/tasks/:id
- * 返回单个任务，找不到返回 404
+ * 返回单个任务，仅限当前用户的任务，找不到返回 404
  */
 router.get('/:id', async (req: Request, res: Response) => {
-  const task = await prisma.task.findUnique({ where: { id: req.params.id } });
+  const task = await prisma.task.findFirst({
+    where: { id: req.params.id, userId: req.user!.id },
+  });
   if (!task) {
     res.status(404).json({ error: '任务不存在' });
     return;
@@ -42,7 +50,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
 /**
  * POST /api/tasks
- * 创建任务，需要 title 字段；description 可选，status 自动设为 todo
+ * 创建任务，自动关联当前用户；需要 title 字段，description 可选
  */
 router.post('/', async (req: Request<object, object, CreateTaskBody>, res: Response) => {
   const { title, description } = req.body;
@@ -56,6 +64,7 @@ router.post('/', async (req: Request<object, object, CreateTaskBody>, res: Respo
     data: {
       title: title.trim(),
       description: description ?? '',
+      userId: req.user!.id, // 关联到当前登录用户
     },
   });
   res.status(201).json(task);
@@ -63,7 +72,7 @@ router.post('/', async (req: Request<object, object, CreateTaskBody>, res: Respo
 
 /**
  * PUT /api/tasks/:id
- * 更新任务的 title、description 或 status，找不到返回 404
+ * 更新任务，检查归属后才允许修改
  */
 router.put('/:id', async (req: Request<{ id: string }, object, UpdateTaskBody>, res: Response) => {
   const { title, description, status } = req.body;
@@ -72,14 +81,15 @@ router.put('/:id', async (req: Request<{ id: string }, object, UpdateTaskBody>, 
     res.status(400).json({ error: `status 必须是 ${VALID_STATUSES.join(', ')} 之一` });
     return;
   }
-
   if (title !== undefined && (typeof title !== 'string' || title.trim() === '')) {
     res.status(400).json({ error: 'title 不能为空字符串' });
     return;
   }
 
-  // 先检查任务是否存在
-  const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
+  // 同时检查 id 和 userId，防止越权操作
+  const existing = await prisma.task.findFirst({
+    where: { id: req.params.id, userId: req.user!.id },
+  });
   if (!existing) {
     res.status(404).json({ error: '任务不存在' });
     return;
@@ -98,10 +108,12 @@ router.put('/:id', async (req: Request<{ id: string }, object, UpdateTaskBody>, 
 
 /**
  * DELETE /api/tasks/:id
- * 删除任务，找不到返回 404，成功返回 204
+ * 删除任务，检查归属后才允许删除
  */
 router.delete('/:id', async (req: Request, res: Response) => {
-  const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
+  const existing = await prisma.task.findFirst({
+    where: { id: req.params.id, userId: req.user!.id },
+  });
   if (!existing) {
     res.status(404).json({ error: '任务不存在' });
     return;

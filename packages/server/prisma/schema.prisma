@@ -9,6 +9,26 @@ datasource db {
   url      = env("DATABASE_URL") // 从 .env 文件读取连接字符串
 }
 
+model User {
+  // 主键：字符串类型，自动生成 UUID
+  id        String   @id @default(uuid())
+
+  // 邮箱，全局唯一，用于登录
+  email     String   @unique
+
+  // 显示用的用户名
+  username  String
+
+  // bcrypt 哈希后的密码，禁止返回给客户端
+  password  String
+
+  // 创建时间
+  createdAt DateTime @default(now())
+
+  // 关联的任务列表
+  tasks     Task[]
+}
+
 model Task {
   // 主键：字符串类型，自动生成 UUID
   id          String   @id @default(uuid())
@@ -27,4 +47,8 @@ model Task {
 
   // 更新时间，每次 update 时自动刷新
   updatedAt   DateTime @updatedAt
+
+  // 所属用户（可为空，兼容迁移前的旧数据）
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
 }

@@ -2,6 +2,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import authRouter from './routes/auth';
 import tasksRouter from './routes/tasks';
 
 const app = express();
@@ -16,7 +17,10 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 任务 CRUD 路由
+// 认证路由（注册/登录，不需要鉴权）
+app.use('/api/auth', authRouter);
+
+// 任务 CRUD 路由（内部加了认证中间件）
 app.use('/api/tasks', tasksRouter);
 
 app.listen(PORT, () => {

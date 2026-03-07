@@ -237,6 +237,113 @@ body {
   flex-shrink: 0;
 }
 
+/* ── Header 用户区 ── */
+.header__inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header__user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header__username {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.btn--logout {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+.btn--logout:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ── 认证页面 ── */
+.auth-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f6f9;
+  padding: 24px 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 40px 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.auth-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #4f46e5;
+  text-align: center;
+}
+
+.auth-sub {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  margin-top: 6px;
+  margin-bottom: 28px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.btn--full {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  margin-top: 4px;
+}
+
+.auth-switch {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #4f46e5;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0 4px;
+  text-decoration: underline;
+}
+
+.btn-link:hover {
+  color: #4338ca;
+}
+
+.btn-link:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ── 响应式 ── */
 @media (max-width: 480px) {
   .header__title {
