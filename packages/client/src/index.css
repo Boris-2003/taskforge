@@ -1,0 +1,259 @@
+/* 全局样式：浅色背景，卡片式布局，响应式设计 */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f4f6f9;
+  color: #1a1a2e;
+  min-height: 100vh;
+}
+
+/* ── 页面布局 ── */
+.page {
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── 顶部 Header ── */
+.header {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: #fff;
+  padding: 32px 16px 28px;
+  text-align: center;
+}
+
+.header__title {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.header__sub {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+/* ── 通用元素 ── */
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid #dde1ea;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+  transition: border-color 0.15s;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #4f46e5;
+}
+
+.input:disabled {
+  background: #f9fafb;
+  color: #999;
+}
+
+.select {
+  padding: 6px 10px;
+  border: 1.5px solid #dde1ea;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+}
+
+.select:focus {
+  border-color: #4f46e5;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: #4f46e5;
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #4338ca;
+}
+
+.btn--danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: #fecaca;
+}
+
+.error-text {
+  color: #dc2626;
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+}
+
+.empty-hint {
+  text-align: center;
+  color: #9ca3af;
+  padding: 48px 0;
+  font-size: 0.95rem;
+}
+
+/* ── TaskForm ── */
+.task-form {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-form__fields {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.task-form__fields .input {
+  flex: 1;
+  min-width: 140px;
+}
+
+/* ── TaskFilter ── */
+.task-filter {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.task-filter__btn {
+  background: #fff;
+  color: #555;
+  border: 1.5px solid #dde1ea;
+  font-size: 0.875rem;
+}
+
+.task-filter__btn:hover:not(:disabled) {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.task-filter__btn--active {
+  background: #4f46e5;
+  color: #fff;
+  border-color: #4f46e5;
+}
+
+/* ── TaskList ── */
+.task-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── TaskItem ── */
+.task-item {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 18px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.07);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  transition: box-shadow 0.15s;
+}
+
+.task-item:hover {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.task-item--done {
+  opacity: 0.7;
+}
+
+.task-item__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-item__title {
+  font-size: 0.975rem;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.task-item__title--done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+.task-item__desc {
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: #6b7280;
+  word-break: break-word;
+}
+
+.task-item__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 480px) {
+  .header__title {
+    font-size: 1.5rem;
+  }
+
+  .task-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .task-item__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .task-form__fields {
+    flex-direction: column;
+  }
+}
