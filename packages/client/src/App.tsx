@@ -1,81 +1,111 @@
-// App：顶层组件，管理认证状态和任务列表，根据登录状态渲染不同界面
+// App：顶层组件，管理认证状态和任务列表
 
 import { useState, useEffect, useCallback } from 'react';
 import { fetchTasks, Task } from './api/tasks';
 import { getStoredUser, clearAuth, AuthUser } from './api/auth';
+import { bridge } from './api/bridge';
+import { useToast } from './context/ToastContext';
 import AuthForm from './components/AuthForm';
 import TaskForm from './components/TaskForm';
 import TaskFilter, { FilterValue } from './components/TaskFilter';
 import TaskList from './components/TaskList';
+import Toast from './components/Toast';
 
 export default function App() {
-  // 从 localStorage 读取初始用户状态，决定显示登录页还是主界面
   const [user, setUser] = useState<AuthUser | null>(getStoredUser);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filter, setFilter] = useState<FilterValue>(undefined);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { showToast } = useToast();
+
+  // 注册 token 过期回调到 bridge
+  useEffect(() => {
+    bridge.registerAuthExpired(() => {
+      clearAuth();
+      setUser(null);
+      setTasks([]);
+    });
+  }, []);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
-    setError('');
     try {
       const data = await fetchTasks(filter);
       setTasks(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
+    } catch {
+      // 错误已由 api 层通过 bridge.toast 展示，此处不重复处理
     } finally {
       setLoading(false);
     }
   }, [filter]);
 
-  // 登录后或筛选条件变化时拉取数据
   useEffect(() => {
     if (user) loadTasks();
   }, [user, loadTasks]);
 
-  /** 登录/注册成功回调 */
-  function handleAuthSuccess(loggedInUser: AuthUser) {
-    setUser(loggedInUser);
-  }
-
-  /** 退出登录：清除本地存储，回到登录页 */
   function handleLogout() {
     clearAuth();
     setUser(null);
     setTasks([]);
     setFilter(undefined);
+    showToast('success', '已退出登录');
   }
 
-  // 未登录：显示认证表单
+  // 统计各状态数量
+  const counts = {
+    all: tasks.length,
+    todo: tasks.filter((t) => t.status === 'todo').length,
+    'in-progress': tasks.filter((t) => t.status === 'in-progress').length,
+    done: tasks.filter((t) => t.status === 'done').length,
+  };
+
   if (!user) {
-    return <AuthForm onSuccess={handleAuthSuccess} />;
+    return (
+      <>
+        <AuthForm onSuccess={setUser} />
+        <Toast />
+      </>
+    );
   }
 
-  // 已登录：显示任务管理界面
   return (
     <div className="page">
-      <header className="header">
-        <div className="header__inner">
-          <div>
-            <h1 className="header__title">TaskForge</h1>
-            <p className="header__sub">简洁高效的任务管理</p>
+      {/* 顶部导航栏 */}
+      <nav className="navbar">
+        <div className="navbar__inner">
+          <div className="navbar__brand">
+            <span className="navbar__logo-icon">⚡</span>
+            <span className="navbar__logo-text">TaskForge</span>
           </div>
-          <div className="header__user">
-            <span className="header__username">{user.username}</span>
-            <button className="btn btn--logout" onClick={handleLogout}>
+          <div className="navbar__user">
+            <span className="navbar__username">👤 {user.username}</span>
+            <button className="btn btn--outline-white" onClick={handleLogout}>
               退出登录
             </button>
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className="container">
+      <main className="page-content">
         <TaskForm onCreated={loadTasks} />
-        <TaskFilter current={filter} onChange={setFilter} />
-        {error && <p className="error-text">{error}</p>}
+        <TaskFilter current={filter} onChange={setFilter} counts={counts} />
         <TaskList tasks={tasks} loading={loading} onUpdated={loadTasks} onDeleted={loadTasks} />
+
+        {/* 底部统计栏 */}
+        {!loading && (
+          <div className="stats-bar">
+            <span>共 <strong>{counts.all}</strong> 项任务</span>
+            <span className="stats-bar__dot stats-bar__dot--todo" />
+            <span>待办 {counts.todo}</span>
+            <span className="stats-bar__dot stats-bar__dot--progress" />
+            <span>进行中 {counts['in-progress']}</span>
+            <span className="stats-bar__dot stats-bar__dot--done" />
+            <span>已完成 {counts.done}</span>
+          </div>
+        )}
       </main>
+
+      <Toast />
     </div>
   );
 }

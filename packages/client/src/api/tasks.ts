@@ -1,6 +1,7 @@
-// API 请求封装：统一管理对后端 /api/tasks 接口的所有请求，每个请求自动携带 JWT
+// API 请求封装：自动携带 JWT，统一处理网络错误/Token 过期/服务器错误
 
 import { getToken } from './auth';
+import { bridge } from './bridge';
 
 const API_BASE = 'http://localhost:3001/api';
 
@@ -15,37 +16,58 @@ export interface Task {
   updatedAt: string;
 }
 
-/** 构建带认证头的请求 headers */
-function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+function authHeaders(): Record<string, string> {
   const token = getToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...extra,
   };
 }
 
-/** 统一处理响应，非 2xx 时抛出错误 */
+/** 统一响应处理：处理特殊错误状态并抛出 */
 async function handleResponse<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `请求失败：${res.status}`);
-  }
   if (res.status === 204) return undefined as T;
-  return res.json();
+
+  if (res.ok) return res.json();
+
+  const body = await res.json().catch(() => ({}));
+  const message: string = body.error ?? `请求失败：${res.status}`;
+
+  // Token 过期或失效 → 触发登出
+  if (res.status === 401 && message.includes('Token')) {
+    bridge.toast('error', '登录已过期，请重新登录');
+    bridge.authExpired();
+    throw new Error(message);
+  }
+
+  // 服务器错误
+  if (res.status >= 500) {
+    bridge.toast('error', '服务器繁忙，请稍后再试');
+    throw new Error(message);
+  }
+
+  throw new Error(message);
 }
 
-/** 获取当前用户的任务列表，可按 status 筛选 */
+/** fetch 包装：捕获网络断开异常 */
+async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    bridge.toast('error', '网络连接失败，请检查网络');
+    throw new Error('网络连接失败');
+  }
+}
+
 export async function fetchTasks(status?: TaskStatus): Promise<Task[]> {
   const url = new URL(`${API_BASE}/tasks`);
   if (status) url.searchParams.set('status', status);
-  const res = await fetch(url.toString(), { headers: authHeaders() });
+  const res = await apiFetch(url.toString(), { headers: authHeaders() });
   return handleResponse<Task[]>(res);
 }
 
-/** 创建新任务 */
 export async function createTask(title: string, description: string): Promise<Task> {
-  const res = await fetch(`${API_BASE}/tasks`, {
+  const res = await apiFetch(`${API_BASE}/tasks`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ title, description }),
@@ -53,12 +75,11 @@ export async function createTask(title: string, description: string): Promise<Ta
   return handleResponse<Task>(res);
 }
 
-/** 更新任务字段 */
 export async function updateTask(
   id: string,
   data: { title?: string; description?: string; status?: TaskStatus }
 ): Promise<Task> {
-  const res = await fetch(`${API_BASE}/tasks/${id}`, {
+  const res = await apiFetch(`${API_BASE}/tasks/${id}`, {
     method: 'PUT',
     headers: authHeaders(),
     body: JSON.stringify(data),
@@ -66,9 +87,8 @@ export async function updateTask(
   return handleResponse<Task>(res);
 }
 
-/** 删除任务 */
 export async function deleteTask(id: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/tasks/${id}`, {
+  const res = await apiFetch(`${API_BASE}/tasks/${id}`, {
     method: 'DELETE',
     headers: authHeaders(),
   });
