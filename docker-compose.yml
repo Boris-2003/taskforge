@@ -1,0 +1,20 @@
+# Docker Compose 配置：启动 TaskForge 本地开发所需的 PostgreSQL 数据库
+
+services:
+  postgres:
+    # 使用官方 PostgreSQL 15 alpine 镜像（体积小）
+    image: postgres:15-alpine
+    container_name: taskforge-db
+    environment:
+      POSTGRES_USER: postgres         # 数据库用户名
+      POSTGRES_PASSWORD: taskforge123 # 数据库密码
+      POSTGRES_DB: taskforge          # 自动创建的数据库名
+    ports:
+      - '5432:5432' # 宿主机端口:容器端口
+    volumes:
+      # 具名卷：容器删除后数据依然保留在 Docker 的卷存储中
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped # 异常退出时自动重启，手动停止不重启
+
+volumes:
+  postgres_data: # 声明具名卷

@@ -1,7 +1,7 @@
-// 任务路由：定义 /api/tasks 相关的五个 CRUD 接口
+// 任务路由：定义 /api/tasks 相关的五个 CRUD 接口，数据来源改为 PostgreSQL（Prisma）
 
 import { Router, Request, Response } from 'express';
-import { findAllTasks, findTaskById, createTask, updateTask, deleteTask } from '../store/tasks';
+import { prisma } from '../db/prisma';
 import { CreateTaskBody, UpdateTaskBody, TaskStatus } from '../types/task';
 
 const router = Router();
@@ -12,7 +12,7 @@ const VALID_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'done'];
  * GET /api/tasks
  * 返回所有任务列表，支持 ?status=todo|in-progress|done 筛选
  */
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const { status } = req.query;
 
   if (status && !VALID_STATUSES.includes(status as TaskStatus)) {
@@ -20,16 +20,19 @@ router.get('/', (req: Request, res: Response) => {
     return;
   }
 
-  const result = findAllTasks(status as string | undefined);
-  res.json(result);
+  const tasks = await prisma.task.findMany({
+    where: status ? { status: status as string } : undefined,
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(tasks);
 });
 
 /**
  * GET /api/tasks/:id
  * 返回单个任务，找不到返回 404
  */
-router.get('/:id', (req: Request, res: Response) => {
-  const task = findTaskById(req.params.id);
+router.get('/:id', async (req: Request, res: Response) => {
+  const task = await prisma.task.findUnique({ where: { id: req.params.id } });
   if (!task) {
     res.status(404).json({ error: '任务不存在' });
     return;
@@ -39,9 +42,9 @@ router.get('/:id', (req: Request, res: Response) => {
 
 /**
  * POST /api/tasks
- * 创建任务，需要 title 字段；description 可选
+ * 创建任务，需要 title 字段；description 可选，status 自动设为 todo
  */
-router.post('/', (req: Request<object, object, CreateTaskBody>, res: Response) => {
+router.post('/', async (req: Request<object, object, CreateTaskBody>, res: Response) => {
   const { title, description } = req.body;
 
   if (!title || typeof title !== 'string' || title.trim() === '') {
@@ -49,7 +52,12 @@ router.post('/', (req: Request<object, object, CreateTaskBody>, res: Response) =
     return;
   }
 
-  const task = createTask({ title: title.trim(), description });
+  const task = await prisma.task.create({
+    data: {
+      title: title.trim(),
+      description: description ?? '',
+    },
+  });
   res.status(201).json(task);
 });
 
@@ -57,7 +65,7 @@ router.post('/', (req: Request<object, object, CreateTaskBody>, res: Response) =
  * PUT /api/tasks/:id
  * 更新任务的 title、description 或 status，找不到返回 404
  */
-router.put('/:id', (req: Request<{ id: string }, object, UpdateTaskBody>, res: Response) => {
+router.put('/:id', async (req: Request<{ id: string }, object, UpdateTaskBody>, res: Response) => {
   const { title, description, status } = req.body;
 
   if (status !== undefined && !VALID_STATUSES.includes(status)) {
@@ -70,17 +78,21 @@ router.put('/:id', (req: Request<{ id: string }, object, UpdateTaskBody>, res: R
     return;
   }
 
-  const updated = updateTask(req.params.id, {
-    title: title?.trim(),
-    description,
-    status,
-  });
-
-  if (!updated) {
+  // 先检查任务是否存在
+  const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
+  if (!existing) {
     res.status(404).json({ error: '任务不存在' });
     return;
   }
 
+  const updated = await prisma.task.update({
+    where: { id: req.params.id },
+    data: {
+      ...(title !== undefined && { title: title.trim() }),
+      ...(description !== undefined && { description }),
+      ...(status !== undefined && { status }),
+    },
+  });
   res.json(updated);
 });
 
@@ -88,12 +100,14 @@ router.put('/:id', (req: Request<{ id: string }, object, UpdateTaskBody>, res: R
  * DELETE /api/tasks/:id
  * 删除任务，找不到返回 404，成功返回 204
  */
-router.delete('/:id', (req: Request, res: Response) => {
-  const deleted = deleteTask(req.params.id);
-  if (!deleted) {
+router.delete('/:id', async (req: Request, res: Response) => {
+  const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
+  if (!existing) {
     res.status(404).json({ error: '任务不存在' });
     return;
   }
+
+  await prisma.task.delete({ where: { id: req.params.id } });
   res.status(204).send();
 });
 
