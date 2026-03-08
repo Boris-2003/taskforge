@@ -60,9 +60,8 @@ async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
 }
 
 export async function fetchTasks(status?: TaskStatus): Promise<Task[]> {
-  const url = new URL(`${API_BASE}/tasks`);
-  if (status) url.searchParams.set('status', status);
-  const res = await apiFetch(url.toString(), { headers: authHeaders() });
+  const url = status ? `${API_BASE}/tasks?status=${encodeURIComponent(status)}` : `${API_BASE}/tasks`;
+  const res = await apiFetch(url, { headers: authHeaders() });
   return handleResponse<Task[]>(res);
 }
 
